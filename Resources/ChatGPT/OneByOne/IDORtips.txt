@@ -1,0 +1,142 @@
+Here’s a detailed checklist for identifying and exploiting **Insecure Direct Object References (IDOR)** vulnerabilities during your bug bounty hunting process. This includes manual testing, tools, tips, and things you may wish you knew along the way.
+
+### **1. Initial Information Gathering**
+
+#### **Step 1: Reconnaissance**
+- **Tools:**
+  - **Burp Suite** (to intercept and analyze traffic)
+  - **OWASP ZAP** (for scanning for IDOR issues)
+  - **Amass** or **Subfinder** (for subdomain enumeration)
+  - **WhatWeb** or **Wappalyzer** (to identify technologies)
+
+- **Actions:**
+  - Identify all the dynamic URLs and API endpoints where the application interacts with objects (e.g., user profiles, order numbers, documents, etc.).
+  - Look for URLs with numeric or alphanumeric identifiers that may refer to user or session data (e.g., `user_id=123`, `order_id=456`, `file_id=789`).
+
+#### **Tip:**
+- Often, parameters in the URL or POST data represent internal objects like records, files, or users. These are prime targets for IDOR testing.
+
+### **2. Automated Scanning and Passive Recon**
+
+#### **Step 2: Use Automated Tools to Detect IDOR**
+- **Tools:**
+  - **Burp Suite** (to identify potential IDOR vulnerabilities)
+  - **OWASP ZAP** (automated vulnerability scanning)
+  - **Vega** (for scanning and finding potential IDORs in APIs)
+  
+- **Actions:**
+  - Run an automated scan using Burp Suite or OWASP ZAP to check for IDOR vulnerabilities in URLs, parameters, and endpoints.
+  - Analyze the HTTP requests and responses for patterns that could indicate improper access control on object identifiers.
+
+#### **Tip:**
+- Tools may miss more complex IDOR issues (e.g., those involving relationships between objects). Follow up with manual testing.
+
+### **3. Identify Object References**
+
+#### **Step 3: Identify Parameters with Object References**
+- **Actions:**
+  - Look for parameters in the URL or HTTP requests that likely refer to objects in the system (e.g., user ID, product ID, file ID, order ID).
+  - Examples of potential object references:
+    - `user_id=123`
+    - `order_id=456`
+    - `file_id=789`
+    - `ticket_id=321`
+  
+#### **Step 4: Understand Object Relationships**
+- **Actions:**
+  - Try to identify which objects are owned by or associated with the logged-in user (e.g., user’s own profile, orders, or files).
+  - Investigate whether the identifiers are sequential, incremental, or follow any predictable pattern (e.g., `user_id=123`, `user_id=124`).
+  
+#### **Tip:**
+- Focus on object references that are predictable, sequential, or based on internal IDs. These are common targets for IDOR vulnerabilities.
+
+### **4. Manual Testing for IDOR**
+
+#### **Step 5: Modify Object Identifiers in Requests**
+- **Tools:**
+  - **Burp Suite** (for intercepting and modifying requests)
+  - **Browser Developer Tools** (for manual testing in the browser)
+
+- **Actions:**
+  - Intercept requests and change the object identifier in the parameter (e.g., change `user_id=123` to `user_id=124`).
+  - Test whether the application allows you to access or manipulate objects that belong to other users (e.g., change your `user_id` to another user's ID and check if you can view their data).
+  - Do this for different objects like orders, files, invoices, and other user-specific data.
+
+#### **Tip:**
+- Pay attention to responses when modifying identifiers (e.g., if a user's order data is visible after modifying the `order_id` parameter).
+
+#### **Step 6: Test Edge Cases**
+- **Actions:**
+  - Test boundary cases by changing identifiers to values that may not be valid (e.g., very large or very small numbers, negative values, or strings).
+  - Look for unexpected behavior when these edge cases are used (e.g., accessing objects that should not be accessible or receiving error messages).
+
+#### **Tip:**
+- Use both sequential (e.g., `user_id=1`, `user_id=2`) and random IDs (e.g., `user_id=abc123`) to see if the system behaves differently.
+
+### **5. Testing for Access Control Misconfigurations**
+
+#### **Step 7: Check for Missing or Weak Access Controls**
+- **Actions:**
+  - After modifying object identifiers, verify if the system properly checks whether the current user has access to the resource. For example, if a user tries to access another user’s order or document, the system should check if they have the necessary permissions.
+  - Test if unauthorized access results in:
+    - Data leakage
+    - Unauthorized actions (e.g., editing or deleting another user’s data)
+  
+#### **Tip:**
+- Some systems fail to properly validate user permissions and may allow unauthorized users to access objects they shouldn't be able to.
+
+### **6. Reporting Findings**
+
+#### **Step 8: Create a Clear Bug Report**
+- **Actions:**
+  - Provide a detailed description of the IDOR vulnerability: include the affected object, the parameter name, and how to reproduce the issue.
+  - Demonstrate how modifying the object identifier grants access to unauthorized data.
+  - Explain the potential impact of the vulnerability (e.g., unauthorized access to sensitive information, account takeover, etc.).
+
+#### **Step 9: Suggest Fixes and Mitigation**
+- **Actions:**
+  - Recommend implementing proper access controls and authorization checks for all objects. For example:
+    - Use role-based access control (RBAC) to ensure users can only access their own data.
+    - Check the user’s ownership of an object before allowing access.
+    - Use indirect object references (e.g., random or hashed identifiers) instead of predictable ones.
+  
+#### **Tip:**
+- Include a proof of concept (PoC) showing how the object identifier can be manipulated and access unauthorized objects.
+
+### **7. Bypass Filters and Obfuscation**
+
+#### **Step 10: Test for Filter Bypass**
+- **Actions:**
+  - Some applications may use basic filtering or security measures to block obvious object IDs. Test these filters for bypass techniques such as:
+    - URL encoding/decoding
+    - Base64 encoding/decoding
+    - Using different formats (e.g., JSON, XML) for requests
+    - Using a combination of numeric and alphanumeric IDs
+  
+#### **Tip:**
+- Bypass techniques may not be immediately obvious. You may need to fuzz various identifiers or manipulate requests in unusual ways to bypass filters.
+
+### **Things I Wish I Knew:**
+
+1. **IDOR Is Often a Symptom of a Larger Problem**: Insecure Direct Object References often point to a broader issue with how the application handles access control. Look for systemic flaws in access management.
+   
+2. **Focus on Predictable Identifiers**: Sequential IDs are often vulnerable because they can be guessed (e.g., `user_id=1`, `user_id=2`, etc.). Pay extra attention to how these identifiers are structured.
+
+3. **Authorization Checks Are Essential**: Even if an IDOR vulnerability is found, it may not be exploitable unless the system lacks proper authorization checks. Always test if there are proper validation checks in place.
+
+4. **Test for Indirect Object References**: Some applications may use hashed or obfuscated IDs as indirect references. Make sure to test for these types of obfuscation and verify that the underlying objects are still properly secured.
+
+5. **Cross-Object IDOR**: Sometimes IDOR vulnerabilities don’t just affect a single object; they can extend across multiple objects (e.g., accessing an order and then manipulating the related invoice). Explore these cross-object vulnerabilities.
+
+6. **IDOR Can Lead to Serious Data Breaches**: IDOR vulnerabilities can result in significant data leakage, so it’s important to understand the potential risks, especially if the objects contain sensitive information.
+
+7. **Automated Tools Have Limitations**: Automated tools are helpful but may miss nuanced or complex IDOR vulnerabilities. Always follow up automated scans with manual testing for a more thorough assessment.
+
+### **Additional Tools:**
+- **Burp Suite Intruder** (for fuzzing object identifiers)
+- **OWASP ZAP** (for scanning and finding IDOR vulnerabilities)
+- **Postman** (for API testing)
+- **Fuzzing Tools** (to automate various identifier manipulations)
+- **Manual Fuzzing** (via Burp Suite or browser tools)
+
+By following this checklist and using these tips, you should be able to effectively identify and exploit IDOR vulnerabilities, improving your bug bounty hunting process and minimizing the risk during your assessments.
