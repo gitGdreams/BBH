@@ -1,0 +1,150 @@
+Here’s a detailed checklist to guide you through the process of identifying and exploiting Cross-Site Scripting (XSS) vulnerabilities during your bug bounty hunting. This checklist includes manual steps, tools, tips, and things you may wish you knew along the way.
+
+### **1. Initial Information Gathering**
+
+#### **Step 1: Reconnaissance**
+- **Tools:**
+  - **Burp Suite** (with active scanner)
+  - **OWASP ZAP**
+  - **Amass** (for subdomain enumeration)
+  - **Subfinder** (for subdomain enumeration)
+  - **Nmap** (to map out open ports)
+  - **WhatWeb** or **Wappalyzer** (for technology stack detection)
+  
+- **Actions:**
+  - Identify target subdomains and web pages.
+  - Gather URLs to scan for input fields, forms, and any reflection points.
+  - Look for JavaScript files, particularly those with user-supplied input handling.
+  - Check for any specific input validation (client-side JavaScript, sanitization, etc.).
+
+#### **Tip:**
+- Use a subdomain enumeration tool (e.g., Subfinder) to look for hidden services or forms.
+- Web application technologies (like Angular, React, Vue.js) can have their own quirks with XSS, so be mindful of how dynamic content is injected.
+
+### **2. Scanning and Passive Recon**
+
+#### **Step 2: Automated Scanning for XSS**
+- **Tools:**
+  - **Burp Suite Scanner** (automated scan for reflected and stored XSS)
+  - **OWASP ZAP Scanner** (automated scan for XSS)
+
+- **Actions:**
+  - Run an automated scan on the target to look for common XSS vectors (e.g., reflected XSS in GET parameters, POST body).
+  - Check the HTTP responses for any suspicious or improperly sanitized data reflecting back user input.
+
+#### **Tip:**
+- Automated scanners may miss complex cases, so focus on unique or less obvious vectors for XSS, such as JavaScript events, HTML attributes, or even error messages.
+
+### **3. Testing Input Fields for XSS Vulnerabilities**
+
+#### **Step 3: Look for Input Fields**
+- **Actions:**
+  - Identify input points such as search bars, URL parameters, contact forms, login fields, etc.
+  - Interact with these fields (both GET and POST requests) and examine if they reflect back your input in an unsafe manner.
+
+#### **Step 4: Try Basic XSS Payloads**
+- **Tools:**
+  - **Burp Suite** (for modifying request and responses)
+  - **XSS Payload List** (common payloads: `<script>alert('XSS')</script>`, `<img src="x" onerror="alert('XSS')">`)
+
+- **Actions:**
+  - Inject common XSS payloads into the input fields.
+  - Use `alert()` to quickly test if the script is executed.
+  - Test for different contexts (e.g., inside HTML body, script tags, image tags, etc.).
+  - Observe how the website handles the injected payload.
+
+#### **Tip:**
+- Experiment with different character encodings (e.g., using `&#x3C;` instead of `<`) to bypass input filters.
+- Ensure that you test for XSS in both GET and POST parameters.
+
+### **4. Analyzing Responses**
+
+#### **Step 5: Examine Reflected Responses**
+- **Actions:**
+  - Capture HTTP responses after injecting payloads to see if they’re reflected back.
+  - Look for locations where your input is reflected in the page (e.g., HTML body, JavaScript variables, HTTP headers).
+  - Check for error messages or unexpected behavior after injecting.
+
+#### **Step 6: Analyze HTTP Response Headers**
+- **Tools:**
+  - **Burp Suite** (to view and manipulate HTTP responses)
+  
+- **Actions:**
+  - Check response headers for `Content-Security-Policy` (CSP), `X-XSS-Protection`, `Strict-Transport-Security` headers.
+  - Look for pages that don’t have proper security headers.
+
+#### **Tip:**
+- If `X-XSS-Protection: 0` is present, XSS protection is disabled in the browser, which may make exploitation easier.
+
+### **5. Manual Testing for Complex XSS**
+
+#### **Step 7: Test for DOM-based XSS**
+- **Tools:**
+  - **Burp Suite** (with JavaScript analysis)
+  - **Browser Developer Tools** (Inspect and modify DOM)
+
+- **Actions:**
+  - Check if any JavaScript on the page directly manipulates the DOM with untrusted data (e.g., `innerHTML`, `document.write()`, `eval()`).
+  - Test JavaScript payloads injected into URL parameters and POST bodies to see if the DOM reflects them unsafely.
+
+#### **Tip:**
+- DOM-based XSS often requires examining JavaScript files loaded on the page. Look for handlers that manipulate the DOM based on user input.
+
+### **6. Exploiting Stored XSS**
+
+#### **Step 8: Test for Stored XSS**
+- **Actions:**
+  - Look for opportunities to store your XSS payload (e.g., comment sections, profile settings, etc.).
+  - Inject a payload that gets stored in the backend and then rendered on the page for other users.
+  - Check how payloads are displayed after a page reload, focusing on user-generated content.
+
+#### **Tip:**
+- Check how the application sanitizes or escapes stored input. It may only escape certain characters, leaving other vectors open.
+
+### **7. Bypassing Filters**
+
+#### **Step 9: Bypass Filters and WAFs**
+- **Tools:**
+  - **Burp Suite Intruder** (for fuzzing)
+  - **XSSer** (for advanced XSS attack testing)
+
+- **Actions:**
+  - Use common tricks to bypass input filters: encoding payloads (`%3C` for `<`), double encoding, or using uncommon characters.
+  - Try using obfuscated JavaScript code, like hexadecimal-encoded characters in payloads.
+
+#### **Tip:**
+- Check for Web Application Firewalls (WAFs) and common protections that may block or filter certain payloads (e.g., CSP, WAF).
+
+### **8. Report Findings**
+
+#### **Step 10: Write Detailed Bug Report**
+- **Actions:**
+  - Provide a clear description of the vulnerability: where it was found (URL, parameter), how to reproduce, and a working proof of concept.
+  - Include information on whether the vulnerability is reflected, stored, or DOM-based.
+  - Suggest mitigations: input sanitization, output encoding, use of CSP, etc.
+  
+#### **Tip:**
+- Include evidence of exploitation (e.g., a screenshot of an alert box or JavaScript executed in the console).
+
+---
+
+### **Things I Wish I Knew:**
+
+1. **Sanitization Is Key**: Don’t just rely on automated scanners. Focus on input points where developers may rely on client-side filtering or poorly sanitize inputs.
+  
+2. **Keep Payloads Simple**: Often, very basic payloads work just fine. You don't need to use complex or obfuscated payloads in many cases.
+
+3. **Test Different Browsers**: Different browsers may handle XSS differently. Make sure to test across several browsers, including older versions.
+
+4. **Escaping Context Matters**: XSS can be context-dependent, meaning payloads might work in one part of the page but fail in another due to escaping rules.
+
+5. **CSP Helps**: If the site uses a strict Content Security Policy (CSP), your attacks may be blocked. CSP violations often leave useful information in error messages for reporting.
+
+6. **Time-consuming**: XSS hunting can take time, so patience is crucial. You may need to test multiple payloads and try different encoding methods.
+
+### **Additional Tools:**
+- **XSStrike** (a tool for advanced XSS testing)
+- **XSSHunter** (for persistent XSS tracking)
+- **Reflected XSS Cheat Sheet** (OWASP XSS prevention cheat sheet)
+
+By following this checklist and using these tips, you should be able to effectively identify and exploit XSS vulnerabilities while minimizing risk.
