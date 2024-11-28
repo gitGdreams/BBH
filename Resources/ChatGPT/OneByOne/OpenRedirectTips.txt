@@ -1,0 +1,141 @@
+Here’s a detailed checklist for identifying and exploiting **Open Redirect** vulnerabilities during your bug bounty hunting process. This includes manual testing, tools, tips, and things you may wish you knew along the way.
+
+### **1. Initial Information Gathering**
+
+#### **Step 1: Reconnaissance**
+- **Tools:**
+  - **Burp Suite** (to intercept and analyze traffic)
+  - **OWASP ZAP** (to scan for open redirects)
+  - **Amass** or **Subfinder** (for subdomain enumeration)
+  - **WhatWeb** or **Wappalyzer** (for identifying technologies)
+
+- **Actions:**
+  - Map out all input points where the target web application might handle URL redirection (e.g., login pages, password reset, affiliate links).
+  - Identify query parameters in URLs that might indicate a redirect (e.g., `redirect_url`, `next`, `return_url`).
+
+#### **Tip:**
+- Look for URL parameters that contain URLs or domain names. These are the most likely to be vulnerable to open redirects.
+
+### **2. Automated Scanning and Passive Recon**
+
+#### **Step 2: Use Automated Tools to Detect Redirects**
+- **Tools:**
+  - **Burp Suite Active Scan** (to look for open redirect issues)
+  - **OWASP ZAP Active Scan** (for automated detection)
+  
+- **Actions:**
+  - Run an automated scan to detect open redirects in GET and POST parameters.
+  - Analyze HTTP responses to identify if the application redirects to URLs that are under your control.
+
+#### **Tip:**
+- Automated scanners will often highlight basic open redirect vulnerabilities, but they may miss advanced or chained redirects, so follow up with manual testing.
+
+### **3. Testing URL Parameters for Open Redirect**
+
+#### **Step 3: Check for URL Handling in Parameters**
+- **Actions:**
+  - Identify URL parameters (e.g., `next`, `redirect`, `url`, `destination`) in GET or POST requests.
+  - Inject URLs as values for these parameters, both internal and external (e.g., `http://evil.com` or `//evil.com`).
+
+#### **Step 4: Test with Payloads**
+- **Tools:**
+  - **Burp Suite** (for modifying and sending HTTP requests)
+  - **Browser Developer Tools** (for inspecting URLs and manual testing)
+
+- **Actions:**
+  - Test simple payloads, such as:
+    - `http://evil.com`
+    - `https://evil.com`
+    - `//evil.com` (for protocols like HTTP/HTTPS)
+    - `www.evil.com` (without the protocol)
+  - Observe if the URL is redirected to your specified domain.
+
+#### **Tip:**
+- Test both with full URLs (e.g., `http://evil.com`) and relative URLs (e.g., `/evil.com`).
+- Consider testing using different encodings (URL-encoding the payload) to bypass filters.
+
+### **4. Analyzing Responses**
+
+#### **Step 5: Inspect HTTP Headers and Responses**
+- **Actions:**
+  - Examine the HTTP response headers for any redirects (e.g., `HTTP/1.1 301 Moved Permanently`, `HTTP/1.1 302 Found`, `Location` headers).
+  - Check if the application properly validates the URL before redirecting.
+
+#### **Step 6: Evaluate Response Behavior**
+- **Tools:**
+  - **Burp Suite** (to view and modify HTTP responses)
+  
+- **Actions:**
+  - Look for locations in the response (e.g., `Location:` header) that indicate a redirect to a URL provided by the user.
+  - Identify if the application performs any checks on the destination URL (e.g., checks for trusted domains).
+
+#### **Tip:**
+- If the application only performs a basic check or doesn’t validate the URL, the vulnerability is likely exploitable.
+
+### **5. Bypassing Filters**
+
+#### **Step 7: Try to Bypass Input Filters**
+- **Tools:**
+  - **Burp Suite Intruder** (for fuzzing and testing URL variations)
+  - **URLDecoder** (to decode URL-encoded payloads)
+  
+- **Actions:**
+  - Attempt to bypass input filters by encoding payloads (e.g., using `%2F` for `/`, `%2E` for `.`) or using uncommon characters (e.g., `//`).
+  - Use double URL encoding (e.g., `%252F` for `%2F`) to bypass filters that only decode once.
+
+#### **Tip:**
+- If the input filter is filtering `http://` or `https://`, try using other schemes like `ftp://` or `file://` to see if the application mishandles them.
+
+### **6. Testing for Chained Open Redirects**
+
+#### **Step 8: Test for Chained Redirects**
+- **Actions:**
+  - After finding an open redirect, try to chain the redirect to another domain.
+  - For example, try injecting a payload like `http://example.com/redirect?url=http://evil.com`.
+
+#### **Tip:**
+- Some websites will redirect first to an internal page before redirecting to an external one. This can be used to chain multiple redirects.
+
+### **7. Exploiting Open Redirect**
+
+#### **Step 9: Try to Redirect Users to Malicious URLs**
+- **Actions:**
+  - Once you’ve identified a valid open redirect, test redirecting users to a malicious site that could be used for phishing, stealing cookies, or performing a social engineering attack.
+  - Try different payloads like redirecting to a login page with the session cookie in the URL, which could allow attackers to capture login credentials.
+
+#### **Tip:**
+- Open redirects can be used for phishing attacks, so consider testing how an attacker might trick users into trusting a malicious URL.
+
+### **8. Report Findings**
+
+#### **Step 10: Write a Detailed Bug Report**
+- **Actions:**
+  - Provide a clear description of the vulnerability: include the affected parameter(s), URL(s), and how to reproduce the issue.
+  - Demonstrate how an attacker can exploit the open redirect (e.g., redirecting to a phishing page).
+  - Include suggestions for mitigation, such as validating URLs against a whitelist, using relative redirects, or requiring confirmation from users before performing a redirect.
+
+#### **Tip:**
+- Use a working proof of concept (PoC), such as a crafted URL or a chain of redirects, to show the impact of the vulnerability.
+
+---
+
+### **Things I Wish I Knew:**
+
+1. **Open Redirects Are Often Overlooked**: Developers may not view open redirects as serious security vulnerabilities, but they can be exploited for phishing attacks and social engineering. Don’t dismiss them easily.
+  
+2. **Proper URL Validation is Key**: Always check if the website validates the URL before performing a redirect. Whitelisting only trusted domains or using relative paths is a good practice.
+
+3. **Test Multiple Variations**: Filters may block specific URL schemes, but you may bypass them by using different techniques like double encoding, or exploiting subdomain or path manipulations.
+
+4. **Chained Redirects Are Dangerous**: Often, a single redirect may not have an immediate impact, but chaining redirects can lead to severe exploitation, especially in phishing scenarios.
+
+5. **Check for Legacy Redirects**: Old or forgotten features (like old login systems or reset password links) may be prone to open redirect issues. Always check legacy or undocumented functionality.
+
+6. **Look for Non-Standard URL Schemes**: If the application uses or accepts non-standard URL schemes (like `ftp://`, `file://`), test these for potential open redirect issues.
+
+### **Additional Tools:**
+- **Burp Suite Intruder** (for fuzzing and testing various input payloads)
+- **Redirect Path** (Chrome Extension for detecting redirects)
+- **Open Redirect Payload List** (common payloads for testing open redirects)
+
+By following this checklist and using these tips, you should be able to effectively identify and exploit open redirect vulnerabilities, minimizing the risk during your bug bounty hunting process.
