@@ -1,0 +1,122 @@
+Here’s a detailed checklist for identifying and exploiting Cross-Site Request Forgery (CSRF) vulnerabilities during your bug bounty hunting. This checklist includes manual steps, tools, tips, and things you may wish you knew along the way.
+
+### **1. Initial Information Gathering**
+
+#### **Step 1: Reconnaissance**
+- **Tools:**
+  - **Burp Suite** (for capturing and modifying requests)
+  - **OWASP ZAP** (for scanning and proxying requests)
+  - **Amass** or **Subfinder** (for subdomain enumeration)
+  - **WhatWeb** or **Wappalyzer** (for technology stack detection)
+
+- **Actions:**
+  - Identify pages with state-changing actions (e.g., account settings, password change, fund transfer, etc.).
+  - Look for forms or HTTP methods (like POST) that change sensitive data on the server (e.g., updating passwords or email addresses).
+  - Gather URLs and identify GET/POST methods used for form submissions.
+  - Check if any anti-CSRF tokens are in place or if any sessions are validated via cookies or headers.
+
+#### **Tip:**
+- If the target is a large application, focus on pages where sensitive actions like changing account details or initiating transactions occur.
+
+### **2. Scanning and Passive Recon**
+
+#### **Step 2: Automated Scanning for CSRF**
+- **Tools:**
+  - **Burp Suite** (for scanning for CSRF vulnerabilities)
+  - **OWASP ZAP** (for scanning for CSRF vulnerabilities)
+
+- **Actions:**
+  - Run automated tools to identify forms that may be vulnerable to CSRF. These tools will look for forms with methods like `POST`, `PUT`, and `DELETE`.
+  - Review responses to check if the application uses proper CSRF protection.
+
+#### **Tip:**
+- Automated scanners might not be able to detect CSRF in custom applications. Manual testing is often required to confirm findings.
+
+### **3. Testing for CSRF Vulnerabilities**
+
+#### **Step 3: Check for State-Changing Actions**
+- **Actions:**
+  - Identify forms or actions that modify user data or perform sensitive transactions.
+  - Look for forms with hidden fields or simple GET/POST requests that change user settings or data.
+  
+#### **Step 4: Test for CSRF Protection Mechanisms**
+- **Actions:**
+  - Look for **anti-CSRF tokens** in forms. These tokens are typically embedded in hidden form fields.
+  - Test if the site requires a token that matches the session, and see if the request is validated on the server-side.
+  - Check if HTTP requests use the **SameSite** cookie attribute to restrict cross-site cookie usage.
+
+#### **Step 5: Manually Test for CSRF**
+- **Tools:**
+  - **Burp Suite** (for intercepting and modifying requests)
+  - **Web Browser** (for manually crafting CSRF attacks)
+
+- **Actions:**
+  - Attempt to craft a malicious request on a different domain or site that will trigger a state-changing action on the vulnerable target. 
+  - **GET-based CSRF**: Try sending a GET request with parameters in the URL that can alter user data (e.g., `http://target.com/change_email?email=malicious@example.com`).
+  - **POST-based CSRF**: Try creating a malicious form with the same parameters as the target’s form and submit it to perform a sensitive action (e.g., changing user settings).
+
+#### **Tip:**
+- Test **GET requests** for state-changing actions that don’t use tokens. For POST requests, check for the presence of anti-CSRF tokens and ensure that they are required for all requests.
+
+### **4. Bypassing CSRF Protections**
+
+#### **Step 6: Test for Missing or Insecure CSRF Tokens**
+- **Actions:**
+  - Check if the application is vulnerable by missing the CSRF token or by using a static, predictable token across different sessions.
+  - Manipulate or reuse tokens to see if the request is still processed.
+
+#### **Step 7: Look for Insecure SameSite Cookie Settings**
+- **Actions:**
+  - Inspect cookies using **Burp Suite** or **Browser Developer Tools** for the `SameSite` attribute.
+  - If the cookies are set with `SameSite=None` or `SameSite=Strict`, test if the CSRF attacks work by forging requests from a different domain.
+
+#### **Tip:**
+- CSRF vulnerabilities can exist even with anti-CSRF tokens if the cookies are not properly secured or the token is not unique per request.
+
+### **5. Exploiting CSRF Vulnerabilities**
+
+#### **Step 8: Craft Malicious CSRF Payloads**
+- **Tools:**
+  - **Burp Suite** (for intercepting and modifying requests)
+  - **CSRF PoC Generator** (to generate CSRF payloads)
+
+- **Actions:**
+  - For a GET request, craft a malicious URL with parameters that will execute the state-changing action on the target website.
+  - For a POST request, create a malicious HTML form that submits the form data automatically to the target application, performing the attack.
+  - Test the attack with different user roles to see if the CSRF affects all users or just certain privileges.
+
+#### **Tip:**
+- For POST-based attacks, use an iframe, image, or JavaScript to send the POST request in the background.
+  
+### **6. Reporting Findings**
+
+#### **Step 9: Write a Detailed Bug Report**
+- **Actions:**
+  - Describe the CSRF vulnerability in detail: include the vulnerable form or endpoint, the attack vector, and how it can be exploited (e.g., link to a malicious page).
+  - Provide a working proof of concept with a CSRF attack demonstration (e.g., a crafted form or URL).
+  - Include screenshots or recordings of the attack in action, showing how the CSRF attack changes sensitive data.
+  - Suggest mitigation strategies, including using anti-CSRF tokens and proper SameSite cookie settings.
+
+#### **Tip:**
+- Suggest that the target implements strong CSRF protections, such as unique tokens for every state-changing request, and validates cookies with the `SameSite` attribute set to `Strict`.
+
+---
+
+### **Things I Wish I Knew:**
+
+1. **SameSite Cookie Protection**: Pay close attention to cookie settings. If the cookies are not set with `SameSite=Strict` or `SameSite=Lax`, CSRF attacks are more likely to succeed.
+
+2. **GET Requests**: GET requests that change user data can still be vulnerable to CSRF. Always test them, especially if they contain sensitive actions in the URL.
+
+3. **JWT Tokens**: If the site uses JWT for session management, check for CSRF vulnerabilities with JWT tokens that are sent via cookies or headers. Ensure they are protected against CSRF.
+
+4. **Third-Party CSRF Protection**: Some applications use third-party libraries for CSRF protection. These might have weak configurations, so manually testing for vulnerabilities is often the best approach.
+
+5. **Browser Caching**: Some browsers may cache forms with authentication cookies, making it easier for attackers to trigger CSRF attacks without needing active sessions.
+
+### **Additional Tools:**
+- **CSRFTester** (a simple tool for testing CSRF vulnerabilities)
+- **Postman** (for crafting custom requests and testing CSRF manually)
+- **CSRF PoC Generator** (to generate payloads quickly)
+
+By following this checklist and using these tips, you should be able to effectively identify and exploit CSRF vulnerabilities while minimizing the risks to the target system.
