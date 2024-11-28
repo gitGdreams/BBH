@@ -1,0 +1,92 @@
+Non-credentialed bug bounty tests, also known as **unauthenticated** or **open** vulnerability tests, refer to vulnerabilities that can be exploited **without needing valid login credentials** or being authenticated. These types of tests generally focus on issues that can be found by attacking the public-facing components of an application, such as APIs, HTTP requests, URLs, and other publicly accessible areas. Here’s a list of common non-credentialed bug bounty tests you might conduct:
+
+### 1. **Cross-Site Scripting (XSS)**
+   - **Description**: XSS vulnerabilities occur when an attacker can inject malicious scripts (usually JavaScript) into web pages viewed by other users. XSS is often exploited in public-facing pages, where a user doesn't need to be authenticated to inject malicious code.
+   - **Test Approach**:
+     - Inject payloads into input fields, URL parameters, or HTTP headers and observe if the application reflects or executes them.
+     - Look for any inputs that don't properly sanitize or escape user input.
+   
+### 2. **Cross-Site Request Forgery (CSRF)**
+   - **Description**: CSRF exploits the trust that a website has in the user's browser by making a request to the website on behalf of the authenticated user without their consent. However, in some cases, CSRF vulnerabilities can be triggered **without authentication** if the application doesn’t require authentication for critical actions.
+   - **Test Approach**:
+     - Check if the application allows actions (e.g., changing settings, making payments, etc.) without requiring authentication.
+     - If such actions are possible, attempt to forge a request using a different user's session (if accessible).
+
+### 3. **Directory Traversal (Path Traversal)**
+   - **Description**: Directory traversal occurs when an attacker can access files and directories that are outside the intended scope of the web server, such as sensitive system files (e.g., `/etc/passwd`).
+   - **Test Approach**:
+     - Attempt to modify file paths in the URL or request parameters to access files outside the allowed directories.
+     - Use payloads like `../../`, `..%2F..%2F`, etc., to attempt directory traversal.
+  
+### 4. **Open Redirect**
+   - **Description**: Open redirect vulnerabilities occur when an application accepts unvalidated input and redirects users to an external URL. This can be exploited for phishing attacks or to send users to malicious sites.
+   - **Test Approach**:
+     - Test any URL or redirect parameters (e.g., `redirect_url`) by modifying the URL and checking if it redirects to an external, malicious site.
+     - Look for parameters that take in external URLs but lack proper validation.
+
+### 5. **Insecure Direct Object References (IDOR)**
+   - **Description**: As discussed earlier, IDOR occurs when an attacker can access or modify an object (e.g., user data, files, etc.) by manipulating an identifier in the URL or request.
+   - **Test Approach**:
+     - Modify object identifiers in URLs or HTTP requests to check if access control is being enforced on sensitive objects.
+     - Focus on predictable parameters like `user_id`, `file_id`, `order_id`, etc.
+
+### 6. **Server-Side Request Forgery (SSRF)**
+   - **Description**: SSRF vulnerabilities allow an attacker to make requests from the server-side to internal systems, potentially leading to the exposure of sensitive data or the ability to interact with internal services.
+   - **Test Approach**:
+     - Look for places where the application fetches URLs or allows user input (e.g., URL parameters, image sources, etc.) and test if it can be manipulated to point to internal or unauthorized services.
+     - Try payloads like `http://localhost:8080` or `http://127.0.0.1`.
+
+### 7. **XML External Entity (XXE) Injection**
+   - **Description**: XXE injection exploits vulnerabilities in XML parsers to execute arbitrary code or read local files from the server.
+   - **Test Approach**:
+     - Identify places where XML is being processed, such as file uploads or HTTP requests.
+     - Inject payloads that include references to external entities, like `<!DOCTYPE foo [ <!ENTITY xxe SYSTEM "file:///etc/passwd"> ]>`.
+
+### 8. **Unrestricted File Upload**
+   - **Description**: An unrestricted file upload vulnerability occurs when an application allows users to upload files without properly validating them, leading to potential code execution (e.g., uploading web shells or malicious files).
+   - **Test Approach**:
+     - Test file upload forms by uploading files with different extensions (e.g., `.php`, `.asp`, `.exe`).
+     - Check if the uploaded file type is properly validated (MIME types, file extensions, etc.).
+     - Try to bypass file type restrictions by modifying headers or using double extensions like `evil.php.jpg`.
+
+### 9. **HTTP Response Splitting**
+   - **Description**: HTTP Response Splitting occurs when an attacker can inject headers or manipulate the response sent by the server, leading to cache poisoning, redirecting requests, or injecting malicious content into HTTP responses.
+   - **Test Approach**:
+     - Inject newline characters (`%0A`, `%0D`) into URL parameters or headers to try and split the HTTP response and inject new headers or content.
+  
+### 10. **Information Disclosure**
+   - **Description**: Information disclosure vulnerabilities occur when an application exposes sensitive information (e.g., error messages, stack traces, internal directory structure, or file contents) without proper access control.
+   - **Test Approach**:
+     - Try to trigger errors by submitting malformed requests, using invalid parameters, or manipulating URLs.
+     - Look for verbose error messages or stack traces that may expose sensitive information.
+     - Check for internal information leaks, such as `.git` or `.env` files being accessible via HTTP.
+
+### 11. **Lack of Rate Limiting or Throttling**
+   - **Description**: Lack of proper rate limiting can allow an attacker to perform brute force attacks or denial-of-service (DoS) attacks.
+   - **Test Approach**:
+     - Test public endpoints that accept user inputs (e.g., login forms, password reset forms) to see if they are vulnerable to brute force attacks.
+     - Use tools like **Burp Intruder** or **Hydra** to automate the testing of rate limits.
+     - Try sending a large number of requests in a short period and check if the server responds with rate-limiting errors.
+
+### 12. **Subdomain Takeover**
+   - **Description**: Subdomain takeover happens when a subdomain points to an external service (e.g., a cloud storage provider) but the resource is no longer active or misconfigured, allowing attackers to claim the subdomain and control it.
+   - **Test Approach**:
+     - Look for unconfigured subdomains by performing subdomain enumeration using tools like **Subfinder** or **Amass**.
+     - Try pointing the subdomain to an unused external service and check if it can be claimed.
+
+### 13. **Cache Poisoning**
+   - **Description**: Cache poisoning involves manipulating cached content (e.g., cached HTTP responses) to deliver malicious content to users.
+   - **Test Approach**:
+     - Check for caching vulnerabilities by modifying parameters that might influence the cached response, such as URL parameters or headers.
+     - Inject content that could potentially poison the cache and deliver malicious responses to users.
+
+### 14. **Open Port Scanning**
+   - **Description**: If an attacker can detect open ports or services on a server, they can use this information for further exploitation (e.g., identifying vulnerable services).
+   - **Test Approach**:
+     - Use tools like **Nmap** to scan the target domain or IP for open ports.
+     - Test the exposed services and see if they have known vulnerabilities.
+
+---
+
+### **Conclusion**
+Non-credentialed bug bounty tests focus on vulnerabilities that can be exploited by anyone, regardless of authentication status. These tests generally target publicly accessible application components such as APIs, URLs, or user inputs. Effective bug bounty hunters should be proficient in identifying such vulnerabilities and knowing how to exploit them in a responsible, ethical manner.
